@@ -18,6 +18,8 @@ dependencies {
     implementation 'org.eclipse.jetty:jetty-servlet:7.0.2.v20100331'
     // Servlet API
     implementation 'javax.servlet:servlet-api:2.5'
+    //JSON
+    implementation 'org.json:json:20240303'
 }
 
 application {
