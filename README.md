@@ -20,7 +20,7 @@
 
 **Running and testing** **[TODO]**
 - **Build**: `gradle build`
-- **Run**: `java -jar build/libs/decide-1.0-SNAPSHOT.jar`
+- **Run**: `gradle run` or `java -jar build/libs/CI-1.0-SNAPSHOT.jar`
 - **Test**: `gradle test`
 
 <br>
