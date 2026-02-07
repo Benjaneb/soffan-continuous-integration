@@ -7,10 +7,7 @@ import javax.servlet.ServletException;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.Base64;
 import java.util.stream.Collectors;
 
 import org.eclipse.jetty.server.Server;
@@ -18,6 +15,9 @@ import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.handler.AbstractHandler;
 
 import org.json.JSONObject;
+import org.json.JSONException;
+
+import org.example.util.Utils;
 
 
 /** 
@@ -36,7 +36,7 @@ public class ContinuousIntegrationServer extends AbstractHandler
         response.setStatus(HttpServletResponse.SC_OK);
         baseRequest.setHandled(true);
         String payload = request.getReader().lines().collect(Collectors.joining());
-        
+
         // If the request is not post
         if (!"POST".equalsIgnoreCase(request.getMethod())) {
             response.getWriter().println("CI server running");
@@ -53,34 +53,20 @@ public class ContinuousIntegrationServer extends AbstractHandler
             String cloneUrl = json.getJSONObject("repository").getString("clone_url");
             String fullName = json.getJSONObject("repository").getString("full_name");
 
-            // Create file for repo with hashed dirName
-            MessageDigest md = MessageDigest.getInstance("SHA-256");
-            byte[] hash = md.digest(fullName.getBytes(StandardCharsets.UTF_8));
-            String dirName = Base64.getUrlEncoder().withoutPadding().encodeToString(hash);
-            File repoDir = new File("/tmp/ci/" + dirName);
+            File repoDir = Utils.createHashedDir(fullName);
 
-            // Clone repo if it has not previously been cloned
-            if (!repoDir.exists()) {
-                ProcessBuilder clone = new ProcessBuilder("git", "clone", cloneUrl, repoDir.getAbsolutePath());
-                clone.inheritIO();
-                clone.start().waitFor();
-            } 
-            
-            // Fetch repo if it has previously been cloned
-            else {
-                ProcessBuilder fetch = new ProcessBuilder("git", "-C", repoDir.getAbsolutePath(), "fetch");
-                fetch.inheritIO();
-                fetch.start().waitFor();
-            }
-        } 
-        
+            boolean repoSuccess = cloneOrFetchRepo(cloneUrl, repoDir, true);
+
+            boolean buildSuccess = buildRepo(repoDir.getAbsolutePath(), true);
+        }
+
         // This was needed for SHA-256 to run
         catch(NoSuchAlgorithmException e) {
             throw new RuntimeException("SHA-256 is not supported");
         }
 
         // Requst is not JSON format
-        catch (org.json.JSONException e) {
+        catch (JSONException e) {
             System.out.println("Received non-JSON payload (ignored)");
         }
 
@@ -95,6 +81,30 @@ public class ContinuousIntegrationServer extends AbstractHandler
             System.out.println("IO error during CI job");
             e.printStackTrace();
         }
+    }
+
+    public static boolean cloneOrFetchRepo(String url, File repoDir, boolean showIO) throws InterruptedException, IOException {
+        // Clone repo if it has not previously been cloned
+        if (!repoDir.exists()) {
+            ProcessBuilder clone = new ProcessBuilder("git", "clone", url, repoDir.getAbsolutePath());
+            if (showIO) clone.inheritIO();
+            int exitCode = clone.start().waitFor();
+            return exitCode == 0;
+        }
+        // Fetch repo if it has previously been cloned
+        else {
+            ProcessBuilder fetch = new ProcessBuilder("git", "-C", repoDir.getAbsolutePath(), "fetch");
+            if (showIO) fetch.inheritIO();
+            int exitCode = fetch.start().waitFor();
+            return exitCode == 0;
+        }
+    }
+
+    public static boolean buildRepo(String repoPath, boolean showIO) throws InterruptedException, IOException {
+        ProcessBuilder build = new ProcessBuilder("gradle", "build", "--project-dir", repoPath);
+        if (showIO) build.inheritIO();
+        int exitCode = build.start().waitFor();
+        return exitCode == 0;
     }
  
     // used to start the CI server in command line
