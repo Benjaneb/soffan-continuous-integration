@@ -58,6 +58,10 @@ public class ContinuousIntegrationServer extends AbstractHandler
             boolean repoSuccess = cloneOrFetchRepo(cloneUrl, repoDir, true);
 
             boolean buildSuccess = buildRepo(repoDir.getAbsolutePath(), true);
+            if (buildSuccess)
+                System.out.println("Build succeeded!");
+            else
+                System.out.println("Build failed");
         }
 
         // This was needed for SHA-256 to run
