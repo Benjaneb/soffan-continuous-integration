@@ -13,6 +13,7 @@ repositories {
 dependencies {
     testImplementation platform('org.junit:junit-bom:5.10.0')
     testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
     // Jetty server
     implementation 'org.eclipse.jetty:jetty-server:7.0.2.v20100331'
     implementation 'org.eclipse.jetty:jetty-servlet:7.0.2.v20100331'
