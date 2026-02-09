@@ -22,7 +22,7 @@ class ContinuousIntegrationServerTest {
             boolean success = ContinuousIntegrationServer.buildRepo(tempDir.getAbsolutePath(), false);
             assertFalse(success);
         } catch (Exception e) {
-            fail("Building empty directory resulted in an exception");
+            fail("Test resulted in an exception");
         }
     }
 
@@ -41,7 +41,29 @@ class ContinuousIntegrationServerTest {
             boolean success = ContinuousIntegrationServer.buildRepo(tempDir.getAbsolutePath(), false);
             assertTrue(success);
         } catch (Exception e) {
-            fail("Building empty directory resulted in an exception");
+            fail("Test resulted in an exception");
+        }
+    }
+
+    @Test
+    @DisplayName("Invalid URL fails clone")
+    void testInvalidURLFailsClone() {
+        try {
+            boolean success = ContinuousIntegrationServer.cloneOrFetchRepo("", tempDir, false);
+            assertFalse(success);
+        } catch (Exception e) {
+            fail("Test resulted in an exception");
+        }
+    }
+
+    @Test
+    @DisplayName("Cloning the repo of this code succeeds")
+    void testCloningThisRepoSucceeds() {
+        try {
+            boolean success = ContinuousIntegrationServer.cloneOrFetchRepo("git@github.com:Benjaneb/soffan-continuous-integration.git", tempDir, false);
+            assertFalse(success);
+        } catch (Exception e) {
+            fail("Test resulted in an exception");
         }
     }
 }
