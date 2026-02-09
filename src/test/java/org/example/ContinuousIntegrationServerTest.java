@@ -40,11 +40,8 @@ class ContinuousIntegrationServerTest {
 
             boolean success = ContinuousIntegrationServer.buildRepo(tempDir.getAbsolutePath(), false);
             assertTrue(success);
-            return;
+        } catch (Exception e) {
+            fail("Building empty directory resulted in an exception");
         }
-        catch (InterruptedException e) {}
-        catch (IOException e) {}
-        // If there was an exception, fail test
-        assertTrue(false);
     }
 }
