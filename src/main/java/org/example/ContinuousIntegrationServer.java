@@ -58,7 +58,7 @@ public class ContinuousIntegrationServer extends AbstractHandler
             // Core CI feature #1: Set up and build (compile)
             boolean cloneRepo = !repoDir.exists();
             boolean repoSuccess = CommandRunner.cloneOrFetchRepo(cloneRepo, cloneUrl, absoluteRepoDir, branchName);            
-            boolean buildSuccess = CommandRunner.buildRepo(repoDir.getAbsolutePath());
+            boolean buildSuccess = CommandRunner.buildRepo(absoluteRepoDir);
 
             if (buildSuccess) {
                 System.out.println("✅ Build succeeded!");
@@ -67,7 +67,7 @@ public class ContinuousIntegrationServer extends AbstractHandler
             }
 
             // Core CI feature #2: Run tests
-            boolean testSuccess = CommandRunner.testRepo(repoDir.getAbsolutePath());
+            boolean testSuccess = CommandRunner.testRepo(absoluteRepoDir);
             
             if (testSuccess) {
                 System.out.println("✅ Tests succeeded!");

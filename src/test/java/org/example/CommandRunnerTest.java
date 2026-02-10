@@ -32,14 +32,13 @@ class CommandRunnerTest {
     @DisplayName("Empty Gradle project succeeds build")
     void testEmptyGradleProjectBuilds() {
         try {
-            ProcessBuilder init = new ProcessBuilder(
+            boolean initSuccess = CommandRunner.runCommand(
                 "gradle", "init",
                 "--project-dir", tempDir.getAbsolutePath(),
                 "--type=java-application",
                 "--use-defaults"
             );
-            int initExitCode = init.start().waitFor();
-            assertTrue(initExitCode == 0);
+            assertTrue(initSuccess);
 
             boolean success = CommandRunner.buildRepo(tempDir.getAbsolutePath());
             assertTrue(success);
@@ -78,14 +77,13 @@ class CommandRunnerTest {
     @DisplayName("Empty Gradle project succeeds testing")
     void testEmptyGradleProjectTest() {
         try {
-            ProcessBuilder init = new ProcessBuilder(
+            boolean initSuccess = CommandRunner.runCommand(
                 "gradle", "init",
                 "--project-dir", tempDir.getAbsolutePath(),
                 "--type=java-application",
                 "--use-defaults"
             );
-            int initExitCode = init.start().waitFor();
-            assertTrue(initExitCode == 0);
+            assertTrue(initSuccess);
 
             boolean buildSuccess = CommandRunner.buildRepo(tempDir.getAbsolutePath());
             assertTrue(buildSuccess);

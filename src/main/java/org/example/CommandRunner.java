@@ -6,7 +6,7 @@ public class CommandRunner {
 
     public static boolean showIO = true;
 
-    private static boolean runCommand(String... args) throws InterruptedException, IOException {
+    public static boolean runCommand(String... args) throws InterruptedException, IOException {
         ProcessBuilder command = new ProcessBuilder(args);
         if (CommandRunner.showIO) command.inheritIO();
         int exitCode = command.start().waitFor();
