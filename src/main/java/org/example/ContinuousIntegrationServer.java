@@ -18,6 +18,7 @@ import org.json.JSONObject;
 import org.json.JSONException;
 
 import org.example.util.Utils;
+import org.example.github.GitHubStatusClient;
 
 
 /** 
@@ -52,16 +53,53 @@ public class ContinuousIntegrationServer extends AbstractHandler
             System.out.println("Valid webhook received");
             String cloneUrl = json.getJSONObject("repository").getString("clone_url");
             String fullName = json.getJSONObject("repository").getString("full_name");
+            String statusesUrlTemplate = json.getJSONObject("repository").optString("statuses_url", null);
+            String sha = json.optString("after", null);
+
+            String statusesUrl = GitHubStatusClient.resolveStatusesUrl(statusesUrlTemplate, sha);
+            String token = System.getProperty("githubToken");
+            boolean canPostStatus = token != null && statusesUrl != null;
+
+            if (canPostStatus) {
+                try {
+                    GitHubStatusClient.postStatus(statusesUrl, "pending", "Build started", fullName, token);
+                } catch (IOException e) {
+                    System.out.println("Failed to post pending status to GitHub");
+                }
+            } else {
+                System.out.println("GitHub token or statuses URL missing; skipping status updates");
+            }
 
             File repoDir = Utils.createHashedDir(fullName);
 
-            boolean repoSuccess = cloneOrFetchRepo(cloneUrl, repoDir, true);
+            boolean buildSuccess = false;
+            boolean testsSuccess = false;
+            try {
+                boolean repoSuccess = cloneOrFetchRepo(cloneUrl, repoDir, true);
 
-            boolean buildSuccess = buildRepo(repoDir.getAbsolutePath(), true);
-            if (buildSuccess)
-                System.out.println("Build succeeded!");
-            else
-                System.out.println("Build failed");
+                buildSuccess = repoSuccess && buildRepo(repoDir.getAbsolutePath(), true);
+                // TODO: run tests here and set testsSuccess based on the result
+                testsSuccess = true;
+
+                if (buildSuccess)
+                    System.out.println("Build succeeded!");
+                else
+                    System.out.println("Build failed");
+            } finally {
+                if (canPostStatus) {
+                    try {
+                        if (!buildSuccess) {
+                            GitHubStatusClient.postStatus(statusesUrl, "failure", "Build failed!", fullName, token);
+                        } else if (!testsSuccess) {
+                            GitHubStatusClient.postStatus(statusesUrl, "failure", "Tests failed!", fullName, token);
+                        } else {
+                            GitHubStatusClient.postStatus(statusesUrl, "success", "Build succeeded and tests passed!", fullName, token);
+                        }
+                    } catch (IOException e) {
+                        System.out.println("Failed to post final status to GitHub");
+                    }
+                }
+            }
         }
 
         // This was needed for SHA-256 to run

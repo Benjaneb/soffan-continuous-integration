@@ -28,8 +28,13 @@ application {
     mainClass = 'org.example.ContinuousIntegrationServer'
 }
 
+run {
+    systemProperty 'githubToken', project.property('githubToken')
+}
+
 test {
     useJUnitPlatform()
+    systemProperty 'githubToken', project.property('githubToken')
 }
 
 jar {
