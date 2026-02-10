@@ -1,24 +1,22 @@
 package org.example;
 
-
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import javax.servlet.ServletException;
-
 import java.io.File;
 import java.io.IOException;
 import java.security.NoSuchAlgorithmException;
 import java.util.stream.Collectors;
 
-import org.eclipse.jetty.server.Server;
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
 import org.eclipse.jetty.server.Request;
+import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.handler.AbstractHandler;
 
-import org.json.JSONObject;
 import org.json.JSONException;
+import org.json.JSONObject;
 
 import org.example.util.Utils;
-
 
 /** 
  Skeleton of a ContinuousIntegrationServer which acts as webhook
@@ -46,30 +44,47 @@ public class ContinuousIntegrationServer extends AbstractHandler
 
         // If request is JSON
         try {
-            JSONObject json = new JSONObject(payload);
+            System.out.println("POST request received");
 
-            // normal CI logic
-            System.out.println("Valid webhook received");
+            // Get JSON data
+            JSONObject json = new JSONObject(payload);
             String cloneUrl = json.getJSONObject("repository").getString("clone_url");
             String fullName = json.getJSONObject("repository").getString("full_name");
+            String branchName = json.getString("ref").replace("refs/heads/", "");
 
             File repoDir = Utils.createHashedDir(fullName);
+            String absoluteRepoDir = repoDir.getAbsolutePath();
 
-            boolean repoSuccess = cloneOrFetchRepo(cloneUrl, repoDir, true);
+            // Core CI feature #1: Set up and build (compile)
+            boolean cloneRepo = !repoDir.exists();
+            boolean repoSuccess = CommandRunner.cloneOrFetchRepo(cloneRepo, cloneUrl, absoluteRepoDir, branchName);            
+            boolean buildSuccess = CommandRunner.buildRepo(absoluteRepoDir);
 
-            boolean buildSuccess = buildRepo(repoDir.getAbsolutePath(), true);
-            if (buildSuccess)
-                System.out.println("Build succeeded!");
-            else
-                System.out.println("Build failed");
+            if (buildSuccess) {
+                System.out.println("✅ Build succeeded!");
+            } else {
+                System.out.println("❌ Build failed");
+            }
+
+            // Core CI feature #2: Run tests
+            boolean testSuccess = CommandRunner.testRepo(absoluteRepoDir);
+            
+            if (testSuccess) {
+                System.out.println("✅ Tests succeeded!");
+            } else {
+                System.out.println("❌ Tests failed");
+            }
+
+            // Core CI feature #3: Notification
+            // ...
         }
 
-        // This was needed for SHA-256 to run
+        // Needed for SHA-256 to run
         catch(NoSuchAlgorithmException e) {
             throw new RuntimeException("SHA-256 is not supported");
         }
 
-        // Requst is not JSON format
+        // Request is not JSON format
         catch (JSONException e) {
             System.out.println("Received non-JSON payload (ignored)");
         }
@@ -85,30 +100,6 @@ public class ContinuousIntegrationServer extends AbstractHandler
             System.out.println("IO error during CI job");
             e.printStackTrace();
         }
-    }
-
-    public static boolean cloneOrFetchRepo(String url, File repoDir, boolean showIO) throws InterruptedException, IOException {
-        // Clone repo if it has not previously been cloned
-        if (!repoDir.exists()) {
-            ProcessBuilder clone = new ProcessBuilder("git", "clone", url, repoDir.getAbsolutePath());
-            if (showIO) clone.inheritIO();
-            int exitCode = clone.start().waitFor();
-            return exitCode == 0;
-        }
-        // Fetch repo if it has previously been cloned
-        else {
-            ProcessBuilder fetch = new ProcessBuilder("git", "-C", repoDir.getAbsolutePath(), "fetch");
-            if (showIO) fetch.inheritIO();
-            int exitCode = fetch.start().waitFor();
-            return exitCode == 0;
-        }
-    }
-
-    public static boolean buildRepo(String repoPath, boolean showIO) throws InterruptedException, IOException {
-        ProcessBuilder build = new ProcessBuilder("gradle", "build", "--project-dir", repoPath);
-        if (showIO) build.inheritIO();
-        int exitCode = build.start().waitFor();
-        return exitCode == 0;
     }
  
     // used to start the CI server in command line
