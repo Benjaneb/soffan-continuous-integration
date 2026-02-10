@@ -1,4 +1,4 @@
-package org.example.github;
+package org.example;
 
 import java.io.IOException;
 import java.io.OutputStream;

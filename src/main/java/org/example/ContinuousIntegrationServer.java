@@ -17,7 +17,6 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import org.example.util.Utils;
-import org.example.github.GitHubStatusClient;
 
 /** 
  Skeleton of a ContinuousIntegrationServer which acts as webhook
