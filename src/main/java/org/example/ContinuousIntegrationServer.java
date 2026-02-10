@@ -35,14 +35,42 @@ public class ContinuousIntegrationServer extends AbstractHandler
         baseRequest.setHandled(true);
         String payload = request.getReader().lines().collect(Collectors.joining());
 
-        // If the request is not post
-        if (!"POST".equalsIgnoreCase(request.getMethod())) {
-            response.getWriter().println("CI server running");
-            System.out.println("Something other than post received");
-            return;
+        switch (request.getMethod().toUpperCase()) {
+            case "POST":
+                if (target.equals("/")) {
+                    handleWebhook(payload);
+                } else {
+                    System.out.println("Invalid request: " + request.getMethod() + " " + target);
+                    return;
+                }
+                break;
+            case "GET":
+                String[] targetParts = target.split("/");
+                if (targetParts.length < 3) {
+                    System.out.println("Invalid request: " + request.getMethod() + " " + target);
+                    return;
+                }
+                // targetParts[0] == ""
+                String repoName = targetParts[1];
+                String item = targetParts[2];
+                if (item.equals("logs")) {
+                    // Return all logs
+                    String responseString = "Logs of " + repoName;
+                    response.getWriter().println(responseString);
+                } else if (item.equals("log")) {
+                    String commitHash = targetParts[3];
+                    // Return specific log
+                    String responseString = "Log of " + commitHash;
+                    response.getWriter().println(responseString);
+                }
+                break;
+            default:
+                System.out.println("Something other than POST or GET received");
+                return;
         }
+    }
 
-        // If request is JSON
+    private void handleWebhook(String payload) {
         try {
             System.out.println("POST request received");
 
