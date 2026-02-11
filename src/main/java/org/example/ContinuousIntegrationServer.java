@@ -56,12 +56,17 @@ public class ContinuousIntegrationServer extends AbstractHandler
             String sha = json.optString("after", null);
             String statusesUrl = GitHubStatusClient.resolveStatusesUrl(statusesUrlTemplate, sha);
             String token = System.getProperty("githubToken");
+            boolean hasToken = token != null && !token.isBlank();
 
             // Set initial GitHub commit status to 'Pending'
-            try {
-                GitHubStatusClient.postStatus(statusesUrl, "pending", "Build started", fullName, token);
-            } catch (IOException e) {
-                System.out.println("Failed to post pending status to GitHub");
+            if (hasToken) {
+                try {
+                    GitHubStatusClient.postStatus(statusesUrl, "pending", "Build started", fullName, token);
+                } catch (IOException e) {
+                    System.out.println("Failed to post pending status to GitHub");
+                }
+            } else {
+                System.out.println("No githubToken provided; skipping GitHub status updates");
             }
 
             File repoDir = Utils.createHashedDir(fullName);
@@ -79,19 +84,21 @@ public class ContinuousIntegrationServer extends AbstractHandler
                 testsSuccess = CommandRunner.testRepo(absoluteRepoDir);
             } finally {
                 // Send final commit status to GitHub
-                try {
-                    if (!buildSuccess) {
-                        System.out.println("❌ Build failed");
-                        GitHubStatusClient.postStatus(statusesUrl, "failure", "Build failed!", fullName, token);
-                    } else if (!testsSuccess) {
-                        System.out.println("❌ Tests failed");
-                        GitHubStatusClient.postStatus(statusesUrl, "failure", "Tests failed!", fullName, token);
-                    } else {
-                        System.out.println("✅ Build & tests succeeded!");
-                        GitHubStatusClient.postStatus(statusesUrl, "success", "Build succeeded and tests passed!", fullName, token);
+                if (hasToken) {
+                    try {
+                        if (!buildSuccess) {
+                            System.out.println("❌ Build failed");
+                            GitHubStatusClient.postStatus(statusesUrl, "failure", "Build failed!", fullName, token);
+                        } else if (!testsSuccess) {
+                            System.out.println("❌ Tests failed");
+                            GitHubStatusClient.postStatus(statusesUrl, "failure", "Tests failed!", fullName, token);
+                        } else {
+                            System.out.println("✅ Build & tests succeeded!");
+                            GitHubStatusClient.postStatus(statusesUrl, "success", "Build succeeded and tests passed!", fullName, token);
+                        }
+                    } catch (IOException e) {
+                        System.out.println("Failed to post final status to GitHub");
                     }
-                } catch (IOException e) {
-                    System.out.println("Failed to post final status to GitHub");
                 }
             }
         }
