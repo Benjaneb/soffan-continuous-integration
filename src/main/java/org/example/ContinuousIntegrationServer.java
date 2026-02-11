@@ -3,7 +3,6 @@ package org.example;
 import java.io.File;
 import java.io.IOException;
 import java.security.NoSuchAlgorithmException;
-import java.util.stream.Collectors;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
@@ -33,13 +32,32 @@ public class ContinuousIntegrationServer extends AbstractHandler
         response.setContentType("text/html;charset=utf-8");
         response.setStatus(HttpServletResponse.SC_OK);
         baseRequest.setHandled(true);
-        String payload = request.getReader().lines().collect(Collectors.joining());
+        String payload = Utils.readStream(request.getInputStream());
 
         // If the request is not post
         if (!"POST".equalsIgnoreCase(request.getMethod())) {
             response.getWriter().println("CI server running");
             System.out.println("Something other than post received");
             return;
+        }
+
+        // Check signature of payload (if we have one set up)
+        String secret = System.getProperty("webhookSecret");
+        boolean hasSecret = secret != null && !secret.isBlank();
+
+        if (hasSecret) {
+            boolean validPayload = PayloadVerifier.isValidPayload(
+                payload,
+                secret,
+                request.getHeader("X-Hub-Signature-256")
+            );
+
+            if (!validPayload) {
+                response.getWriter().println("Invalid signature");
+                System.out.println("Signature of POST request was invalid");
+                return;
+            }
+            System.out.println("Signature passed!");
         }
 
         // If request is JSON

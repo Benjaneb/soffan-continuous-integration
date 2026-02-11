@@ -32,12 +32,18 @@ run {
     if (project.hasProperty('githubToken')) {
         systemProperty 'githubToken', project.property('githubToken')
     }
+    if (project.hasProperty('webhookSecret')) {
+        systemProperty 'webhookSecret', project.property('webhookSecret')
+    }
 }
 
 test {
     useJUnitPlatform()
     if (project.hasProperty('githubToken')) {
         systemProperty 'githubToken', project.property('githubToken')
+    }
+    if (project.hasProperty('webhookSecret')) {
+        systemProperty 'webhookSecret', project.property('webhookSecret')
     }
 }
 
