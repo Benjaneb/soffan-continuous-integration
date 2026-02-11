@@ -17,6 +17,10 @@ class CommandRunnerTest {
         CommandRunner.showIO = false;
     }
 
+    private String gradleWrapper() {
+        return System.getProperty("os.name").toLowerCase().contains("win") ? "gradlew.bat" : "./gradlew";
+    }
+
     @Test
     @DisplayName("Empty directory fails build")
     void testEmptyDirBuildFail() {
@@ -33,12 +37,17 @@ class CommandRunnerTest {
     void testEmptyGradleProjectBuilds() {
         try {
             boolean initSuccess = CommandRunner.runCommand(
-                "gradle", "init",
+                gradleWrapper(), "init",
                 "--project-dir", tempDir.getAbsolutePath(),
                 "--type=java-application",
                 "--use-defaults"
             );
             assertTrue(initSuccess);
+            boolean wrapperSuccess = CommandRunner.runCommand(
+                gradleWrapper(), "wrapper",
+                "--project-dir", tempDir.getAbsolutePath()
+            );
+            assertTrue(wrapperSuccess);
 
             boolean success = CommandRunner.buildRepo(tempDir.getAbsolutePath());
             assertTrue(success);
@@ -78,12 +87,17 @@ class CommandRunnerTest {
     void testEmptyGradleProjectTest() {
         try {
             boolean initSuccess = CommandRunner.runCommand(
-                "gradle", "init",
+                gradleWrapper(), "init",
                 "--project-dir", tempDir.getAbsolutePath(),
                 "--type=java-application",
                 "--use-defaults"
             );
             assertTrue(initSuccess);
+            boolean wrapperSuccess = CommandRunner.runCommand(
+                gradleWrapper(), "wrapper",
+                "--project-dir", tempDir.getAbsolutePath()
+            );
+            assertTrue(wrapperSuccess);
 
             boolean buildSuccess = CommandRunner.buildRepo(tempDir.getAbsolutePath());
             assertTrue(buildSuccess);

@@ -14,14 +14,14 @@
 
 **Requirements** **[TODO]**
 - **Java 17** or later
-- **Gradle 7** or later
+- **Gradle wrapper** (included)
 
 <br>
 
 **Running and testing** **[TODO]**
-- **Build**: `gradle build`
-- **Run**: `gradle run` or `java -jar build/libs/CI-1.0-SNAPSHOT.jar`
-- **Test**: `gradle test`
+- **Build**: `./gradlew build`
+- **Run**: `./gradlew run` or `java -jar build/libs/CI-1.0-SNAPSHOT.jar`
+- **Test**: `./gradlew test`
 
 <br>
 
