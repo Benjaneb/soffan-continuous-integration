@@ -29,12 +29,16 @@ application {
 }
 
 run {
-    systemProperty 'githubToken', project.property('githubToken')
+    if (project.hasProperty('githubToken')) {
+        systemProperty 'githubToken', project.property('githubToken')
+    }
 }
 
 test {
     useJUnitPlatform()
-    systemProperty 'githubToken', project.property('githubToken')
+    if (project.hasProperty('githubToken')) {
+        systemProperty 'githubToken', project.property('githubToken')
+    }
 }
 
 jar {
