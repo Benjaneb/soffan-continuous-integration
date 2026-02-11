@@ -1,5 +1,6 @@
 package org.example;
 
+import java.io.File;
 import java.io.IOException;
 
 public class CommandRunner {
@@ -24,10 +25,20 @@ public class CommandRunner {
     }
 
     public static boolean buildRepo(String repoPath) throws InterruptedException, IOException {
-        return runCommand("gradle", "build", "-x", "test", "--project-dir", repoPath);
+        File wrapperFile = gradleWrapperFile(repoPath);
+        if (!wrapperFile.isFile()) return false;
+        return runCommand(wrapperFile.getAbsolutePath(), "build", "-x", "test", "--project-dir", repoPath);
     }
 
     public static boolean testRepo(String repoPath) throws InterruptedException, IOException {
-        return runCommand("gradle", "test", "--project-dir", repoPath);
+        File wrapperFile = gradleWrapperFile(repoPath);
+        if (!wrapperFile.isFile()) return false;
+        return runCommand(wrapperFile.getAbsolutePath(), "test", "--project-dir", repoPath);
+    }
+
+    private static File gradleWrapperFile(String repoPath) {
+        boolean isWindows = System.getProperty("os.name").toLowerCase().contains("win");
+        String wrapperName = isWindows ? "gradlew.bat" : "gradlew";
+        return new File(repoPath, wrapperName);
     }
 }
