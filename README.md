@@ -1,12 +1,12 @@
 # soffan-continuous-integration
 
-**[TODO] One-line description of project**
+**A lightweight, webhook-driven Continuous Integration (CI) server for automated building, testing, and status reporting of GitHub repositories.**
 
 <br>
 
 ## What this project does
 
-**[TODO]** 1–2 paragraphs
+This project implements a custom Continuous Integration (CI) server that automates the software development lifecycle. Upon receiving a push event from a GitHub webhook, the server securely validates the request signature, clones the specific branch of the repository, and executes an automated build and test suite using Gradle. It then provides immediate feedback by notifying the developers of the build results via the GitHub Commit Status API.
 
 <br>
 
