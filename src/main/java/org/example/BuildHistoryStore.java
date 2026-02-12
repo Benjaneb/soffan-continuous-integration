@@ -135,6 +135,10 @@ public final class BuildHistoryStore {
     }
 
     private static void writeBuildsArray(File buildsFile, JSONArray buildsArray) throws IOException {
+        File parentDir = buildsFile.getParentFile();
+        if (parentDir != null) {
+            Files.createDirectories(parentDir.toPath());
+        }
         Files.write(buildsFile.toPath(), buildsArray.toString(2).getBytes(StandardCharsets.UTF_8));
     }
 }
