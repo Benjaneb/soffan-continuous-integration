@@ -3,6 +3,8 @@ package org.example;
 import java.io.File;
 import java.io.IOException;
 import java.security.NoSuchAlgorithmException;
+import java.time.Instant;
+import java.util.UUID;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
@@ -67,17 +69,23 @@ public class ContinuousIntegrationServer extends AbstractHandler
                        HttpServletResponse response) 
         throws IOException, ServletException
     {
-        response.setContentType("text/html;charset=utf-8");
-        response.setStatus(HttpServletResponse.SC_OK);
         baseRequest.setHandled(true);
-        String payload = Utils.readStream(request.getInputStream());
+        String method = request.getMethod();
+
+        if ("GET".equalsIgnoreCase(method)) {
+            handleGetRequest(target, response);
+            return;
+        }
 
         // If the request is not post
-        if (!"POST".equalsIgnoreCase(request.getMethod())) {
+        if (!"POST".equalsIgnoreCase(method)) {
+            response.setContentType("text/html;charset=utf-8");
+            response.setStatus(HttpServletResponse.SC_OK);
             response.getWriter().println("CI server running");
             System.out.println("Something other than post received");
             return;
         }
+        String payload = Utils.readStream(request.getInputStream());
 
         // Check signature of payload (if we have one set up)
         String secret = System.getProperty("webhookSecret");
@@ -113,16 +121,22 @@ public class ContinuousIntegrationServer extends AbstractHandler
             String statusesUrl = GitHubStatusClient.resolveStatusesUrl(statusesUrlTemplate, sha);
             String token = System.getProperty("githubToken");
             boolean hasToken = token != null && !token.isBlank();
+            boolean canPostStatus = hasToken && statusesUrl != null && !statusesUrl.isBlank();
+            String buildId = UUID.randomUUID().toString();
+            String buildDate = Instant.now().toString();
+            StringBuilder buildLogs = new StringBuilder();
 
             // Set initial GitHub commit status to 'Pending'
-            if (hasToken) {
+            if (canPostStatus) {
                 try {
                     GitHubStatusClient.postStatus(statusesUrl, "pending", "Build started", fullName, token);
                 } catch (IOException e) {
                     System.out.println("Failed to post pending status to GitHub");
                 }
-            } else {
+            } else if (!hasToken) {
                 System.out.println("No githubToken provided; skipping GitHub status updates");
+            } else {
+                System.out.println("No statuses URL found in payload; skipping GitHub status updates");
             }
 
             File repoDir = Utils.createHashedDir(fullName);
@@ -133,14 +147,32 @@ public class ContinuousIntegrationServer extends AbstractHandler
             try {
                 // Core CI feature #1: Set up and build (compile)
                 boolean cloneRepo = !repoDir.exists();
-                boolean repoSuccess = CommandRunner.cloneOrFetchRepo(cloneRepo, cloneUrl, absoluteRepoDir, branchName);
-                buildSuccess = repoSuccess &&  CommandRunner.buildRepo(absoluteRepoDir);
+                CommandRunner.CommandResult repoResult = CommandRunner.cloneOrFetchRepoWithLogs(
+                    cloneRepo, cloneUrl, absoluteRepoDir, branchName
+                );
+                buildLogs.append("Repository setup: \n").append(repoResult.output).append('\n');
+
+                CommandRunner.CommandResult buildResult;
+                if (repoResult.success) {
+                    buildResult = CommandRunner.buildRepoWithLogs(absoluteRepoDir);
+                } else {
+                    buildResult = new CommandRunner.CommandResult(false, "Repository setup failed; build skipped.\n");
+                }
+                buildLogs.append("Build: \n").append(buildResult.output).append('\n');
+                buildSuccess = repoResult.success && buildResult.success;
 
                 // Core CI feature #2: Run tests
-                testsSuccess = CommandRunner.testRepo(absoluteRepoDir);
+                CommandRunner.CommandResult testResult;
+                if (repoResult.success) {
+                    testResult = CommandRunner.testRepoWithLogs(absoluteRepoDir);
+                } else {
+                    testResult = new CommandRunner.CommandResult(false, "Repository setup failed; tests skipped.\n");
+                }
+                buildLogs.append("Test: \n").append(testResult.output).append('\n');
+                testsSuccess = testResult.success;
             } finally {
                 // Send final commit status to GitHub
-                if (hasToken) {
+                if (canPostStatus) {
                     try {
                         if (!buildSuccess) {
                             System.out.println("❌ Build failed");
@@ -157,6 +189,25 @@ public class ContinuousIntegrationServer extends AbstractHandler
                     }
                 }
             }
+
+            JSONObject buildRecord = createBuildRecord(
+                buildId,
+                fullName,
+                sha,
+                branchName,
+                buildDate,
+                buildSuccess,
+                testsSuccess,
+                buildLogs.toString()
+            );
+            BuildHistoryStore.appendBuild(fullName, buildRecord);
+
+            response.setContentType("application/json;charset=utf-8");
+            response.setStatus(HttpServletResponse.SC_OK);
+            JSONObject responseBody = new JSONObject();
+            responseBody.put("message", "Build processed");
+            responseBody.put("url", "/builds/" + buildId);
+            response.getWriter().println(responseBody.toString(2));
         }
 
         // Needed for SHA-256 to run
@@ -180,6 +231,56 @@ public class ContinuousIntegrationServer extends AbstractHandler
             System.out.println("IO error during CI job");
             e.printStackTrace();
         }
+    }
+
+    private void handleGetRequest(String target, HttpServletResponse response) throws IOException {
+        if ("/builds".equals(target)) {
+            response.setContentType("application/json;charset=utf-8");
+            response.setStatus(HttpServletResponse.SC_OK);
+            response.getWriter().println(BuildHistoryStore.listBuildSummaries().toString(2));
+            return;
+        }
+
+        if (target != null && target.startsWith("/builds/")) {
+            String buildId = target.substring("/builds/".length());
+            JSONObject build = BuildHistoryStore.getBuildById(buildId);
+            response.setContentType("application/json;charset=utf-8");
+            if (build == null) {
+                response.setStatus(HttpServletResponse.SC_NOT_FOUND);
+                response.getWriter().println(new JSONObject().put("error", "Build not found").toString());
+            } else {
+                response.setStatus(HttpServletResponse.SC_OK);
+                response.getWriter().println(build.toString(2));
+            }
+            return;
+        }
+
+        response.setContentType("text/html;charset=utf-8");
+        response.setStatus(HttpServletResponse.SC_OK);
+        response.getWriter().println("CI server running");
+    }
+
+    private JSONObject createBuildRecord(
+        String buildId,
+        String repository,
+        String commit,
+        String branch,
+        String buildDate,
+        boolean buildSuccess,
+        boolean testsSuccess,
+        String logs
+    ) {
+        JSONObject buildRecord = new JSONObject();
+        buildRecord.put("id", buildId);
+        buildRecord.put("repository", repository);
+        buildRecord.put("commit", commit == null ? "" : commit);
+        buildRecord.put("branch", branch);
+        buildRecord.put("buildDate", buildDate);
+        buildRecord.put("buildSuccess", buildSuccess);
+        buildRecord.put("testsSuccess", testsSuccess);
+        buildRecord.put("status", buildSuccess && testsSuccess ? "success" : "failure");
+        buildRecord.put("logs", logs);
+        return buildRecord;
     }
  
     /**
