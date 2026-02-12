@@ -6,6 +6,8 @@
 
 ## What this project does
 
+test
+
 This project implements a custom Continuous Integration (CI) server that automates the software development lifecycle. Upon receiving a push event from a GitHub webhook, the server securely validates the request signature, clones the specific branch of the repository, and executes an automated build and test suite using Gradle. It then provides immediate feedback by notifying the developers of the build results via the GitHub Commit Status API.
 
 <br>
