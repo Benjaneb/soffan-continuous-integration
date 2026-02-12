@@ -9,7 +9,26 @@ import java.nio.charset.StandardCharsets;
 
 import org.json.JSONObject;
 
+/**
+ * Client utility for interacting with the GitHub Commit Status API.
+ *
+ * <p>Provides helper methods for resolving GitHub status URLs
+ * and posting commit status updates.</p>
+ */
 public class GitHubStatusClient {
+    /**
+     * Posts a commit status update to GitHub using the REST API.
+     *
+     * <p>This method sends an HTTP POST request to the provided
+     * {@code statusesUrl} with a JSON body containing the state, description and context</p>
+     *
+     * @param statusesUrl the GitHub statuses API URL
+     * @param state the commit state 
+     * @param description a short message describing the status
+     * @param context a string identifying the status context
+     * @param token a GitHub personal access token used for authentication
+     * @throws IOException if an I/O error occurs
+     */
     public static void postStatus(String statusesUrl, String state, String description, String context, String token) throws IOException {
         URL url;
         try {
@@ -41,6 +60,15 @@ public class GitHubStatusClient {
         }
     }
 
+    /**
+     * Resolves a GitHub statuses URL template by replacing the
+     * {@code {sha}} placeholder with the provided commit SHA.
+     *
+     * @param templateUrl the template URL returned by the GitHub API
+     * @param sha the commit SHA to insert into the template
+     * @return the resolved URL with the SHA substituted,
+     *         or null if there is no template URL or it requires a SHA that is missing.
+     */
     public static String resolveStatusesUrl(String templateUrl, String sha) {
         if (templateUrl == null || templateUrl.isEmpty()) {
             return null;

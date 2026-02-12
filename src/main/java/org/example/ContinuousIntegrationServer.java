@@ -17,12 +17,50 @@ import org.json.JSONObject;
 
 import org.example.util.Utils;
 
-/** 
- Skeleton of a ContinuousIntegrationServer which acts as webhook
- See the Jetty documentation for API documentation of those classes.
-*/
+/**
+ * A simple Continuous Integration server implemented using Jetty.
+ *
+ * <p>This server acts as a GitHub webhook endpoint. It waits for a post request 
+ * that contains a Github push event payload. When one is recieved it:<p>
+ * <ol>
+ *   <li>Optionally verifies the webhook signature (if a secret is configured).</li>
+ *   <li>Looks at the JSON payload to get information about the repository and branch.</li>
+ *   <li>Clones or fetches the repository locally.</li>
+ *   <li>Builds the project using Gradle.</li>
+ *   <li>Runs tests using Gradle.</li>
+ *   <li>Updates the commit status on GitHub.</li>
+ * </ol>
+ */
 public class ContinuousIntegrationServer extends AbstractHandler
 {
+    /**
+     * Handles incoming HTTP requests to the CI server.
+     *
+     * <p> Expects a POST request and will otherwise respond with a simple 
+     * message to indicate that the server is running
+     *
+     * <p> if a webhook secret is configured the signature is verified. 
+     * Invalid signatures lead to the request being rejected.<p> 
+     *
+     * <p>For valid GitHub webhook payloads, this method:</p>
+     * <ul>
+     *   <li>Extracts repository metadata.</li>
+     *   <li>Posts a pending commit status if token is given.</li>
+     *   <li>Clones or fetches the repository.</li>
+     *   <li>Builds the project using Gradle.</li>
+     *   <li>Tests the project using Gradle.</li>
+     *   <li>Posts a final success or sailure status if token is given.</li>
+     * </ul>
+     *
+     * <p> Errors are handled and logged.<p> 
+     *
+     * @param target the target of the request
+     * @param baseRequest the Jetty-specific request object
+     * @param request the HTTP servlet request containing headers and payload
+     * @param response the HTTP servlet response used to return status information
+     * @throws IOException if an I/O error occurs
+     * @throws ServletException if a servlet-related error occurs
+     */
     public void handle(String target,
                        Request baseRequest,
                        HttpServletRequest request,
@@ -144,7 +182,17 @@ public class ContinuousIntegrationServer extends AbstractHandler
         }
     }
  
-    // used to start the CI server in command line
+    /**
+     * Starts the Continuous Integration server on port 8007.
+     *
+     * <p>This method initializes a Jetty server and registers
+     * a {@link ContinuousIntegrationServer} instance to handle the requests,
+     * and blocks the main thread until the server is stopped.</p>
+     *
+     * @param args command-line arguments
+     * @throws Exception if the server fails to start or encounters
+     *         a fatal runtime error
+     */
     public static void main(String[] args) throws Exception
     {
         Server server = new Server(8007);
