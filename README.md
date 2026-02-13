@@ -33,9 +33,18 @@ Create a `gradle.properties` file in the root folder:
 | `githubToken`      | Set this for activating ability to report back to GitHub on the commit status.
 | `webhookSecret`      | We recommend to use a password-protected Webhook. If this variable is set, the CI server will verify signature of incoming requests.
 
+> **`githubToken`**: Can be a "Fine-grained Personal Access Token" created under GitHub settings > Developer settings (at the bottom) > Personal access tokens > Fine-grained tokens. Give it Repository access > Only select repositories (for write access) and then your repo. Under permissions you need to add "Commit statuses" and change it to read and write.
+
 <br>
 
-> **`githubToken`**: Can be a "Fine-grained Personal Access Token" created under GitHub settings > Developer settings (at the bottom) > Personal access tokens > Fine-grained tokens. Give it Repository access > Only select repositories (for write access) and then your repo. Under permissions you need to add "Commit statuses" and change it to read and write.
+**API Endpoints** <br>
+The CI server provides a RESTful interface for both receiving webhooks and inspecting build history.
+| Endpoint      | Method | Description |
+| ----------- | ----------- | ----------- |
+| `/`      | `POST` | **Webhook Receiver**: Listens for GitHub push events. It verifies the HMAC-SHA256 signature (if `webhookSecret` is set), clones/fetches the repo, and executes the CI pipeline. |
+| `/`      | `GET` | **Health Check**: Returns a simple "CI server running" message to verify the server is live. |
+| `/builds`      | `GET` | **Build History List**: Returns a JSON array of all past build summaries, including repository names, commit SHAs, dates, and success/failure status. |
+| `/builds/{id}`      | `GET` | **Build Details**: Returns the comprehensive JSON record for a specific build. The unique **UUID** is generated during the CI pipeline execution and sent in the response to the caller. The record includes the commit identifier, build date, and full console logs from the Gradle execution. |
 
 
 <br>
