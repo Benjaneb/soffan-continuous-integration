@@ -2,6 +2,7 @@ package org.example;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -20,23 +21,19 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class BuildHistoryStoreTest {
-    private static final String OWNER = "owner123";
-    private static final String REPOSITORY = "repoitory123";
+    private static final String OWNER = "test_owner123";
+    private static final String REPOSITORY = "test_repoitory123";
     private static final String FULL_REPOSITORY_NAME = OWNER + "/" + REPOSITORY;
     private static final Path OWNER_DIRECTORY = Paths.get("data", "repositories", OWNER);
 
     @BeforeEach
     void setUp() throws IOException {
-        if (!Files.exists(OWNER_DIRECTORY)) {
-            return;
-        }
-        try (Stream<Path> walk = Files.walk(OWNER_DIRECTORY)) {
-            // Here we sort in reverse order to delete files before directories
-            List<Path> paths = walk.sorted(Comparator.reverseOrder()).toList();
-            for (Path path : paths) {
-                Files.deleteIfExists(path);
-            }
-        }
+        deleteTestBuildsDirectory();
+    }
+
+    @AfterAll
+    static void tearDown() throws IOException {
+        deleteTestBuildsDirectory();
     }
 
     @Test
@@ -90,5 +87,16 @@ class BuildHistoryStoreTest {
             .put("commit", "abc123")
             .put("buildDate", "2026-02-12T00:00:00Z")
             .put("status", "success");
+    }
+
+    private static void deleteTestBuildsDirectory() throws IOException {
+        if (Files.exists(OWNER_DIRECTORY)) {
+            try (Stream<Path> files = Files.walk(OWNER_DIRECTORY)) {
+                List<Path> sortedFiles = files.sorted(Comparator.reverseOrder()).toList();
+                for (Path file : sortedFiles) {
+                    Files.delete(file);
+                }
+            }
+        }
     }
 }
